@@ -261,7 +261,43 @@ describe Mongoid::Contextual::Aggregable::Mongo do
   end
 
   describe "#max" do
-
+    context "when using a criteria involving Sort and Limit" do
+      before do
+        (1..6).each do |i|
+          Band.create(name: "Band #{i}", likes: i, views: 10-i)
+          # Band 1, Likes 1, Views 9
+          # Band 2, Likes 2, Views 8
+          # Band 3, Likes 3, Views 7
+          # Band 4, Likes 4, Views 6
+          # Band 5, Likes 5, Views 5
+          # Band 6, Likes 6, Views 4
+        end
+      end
+      let(:reverse_sort_criteria_limit_5) do
+        Band.all.asc(:views).limit(5)
+      end
+      let(:normal_sort_criteria_limit_5) do
+        Band.all.desc(:views).limit(5)
+      end
+      let(:context_reverse_sort) do
+        Mongoid::Contextual::Mongo.new(reverse_sort_criteria_limit_5)
+      end
+      let(:context_normal_sort) do
+        Mongoid::Contextual::Mongo.new(normal_sort_criteria_limit_5)
+      end
+      it "correctly performs sort and limit regardless of max" do
+        # Sanity check
+        expect(context_reverse_sort.first.name).to eq "Band 6"
+        expect(context_normal_sort.first.name).to eq "Band 1"
+      end
+      it "finds correct likes value with max and normal sort order" do
+        expect(context_normal_sort.max(:likes)).to eq 5
+      end
+      it "finds correct likes value with max and reverse sort order" do
+        expect(context_reverse_sort.max(:likes)).to eq 6
+      end
+    end
+    
     context "when provided a single field" do
 
       let!(:depeche) do
